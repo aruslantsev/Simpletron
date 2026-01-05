@@ -1,0 +1,11 @@
+OPTIMIZE strings storage (one byte for character)
+FIND all variables and constants, only after it set stack pointer
+ADD support for arrays of integer
+ADD exponentiation operator ^ and modify simpletron
+ADD subroutines GOSUB...RETURN
+ADD cycles
+   FOR x = 2 TO 5 [STEP 3]
+   ...
+   NEXT
+ADD float support
+WRITE basic interpreter
