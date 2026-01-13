@@ -47,22 +47,23 @@ int main(const int argc, char *argv[]) {
 #ifdef DEBUG
     puts("Resolving remaining references");
 #endif
-    const struct MissingRefListEntry *missing_ref_ptr = program.missing_ref_list;
-    while (missing_ref_ptr != NULL) {
-        identifier.value = missing_ref_ptr->label;
+    for (size_t missing_ref_list_ptr = 0; missing_ref_list_ptr < program.missing_ref_list_size; missing_ref_list_ptr++) {
+        identifier.value = program.missing_ref_list[missing_ref_list_ptr].label;
         address = search_entry(&program, identifier, LINE);
         if (address == -1) {
-            printf("Unresolved label %d\n", missing_ref_ptr->label);
+            printf("Unresolved label %d\n", program.missing_ref_list[missing_ref_list_ptr].label);
             exit(1);
         }
 #ifdef DEBUG
         printf(
-            "Instruction at address %0X references line %d. Real address: %ld\n",
-            (word_t) missing_ref_ptr->address, missing_ref_ptr->label, address
+            "Instruction at address %0X references line %d. Real address: %ld (%0x)\n",
+            (word_t) program.missing_ref_list[missing_ref_list_ptr].address, 
+            program.missing_ref_list[missing_ref_list_ptr].label, 
+            address, 
+            (uword_t) address
         );
 #endif
-        program.memory[missing_ref_ptr->address] |= address;
-        missing_ref_ptr = missing_ref_ptr->next;
+        program.memory[program.missing_ref_list[missing_ref_list_ptr].address] |= address;
     }
     fclose(program_file);
 

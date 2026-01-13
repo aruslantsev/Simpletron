@@ -19,22 +19,22 @@ struct LookupListEntry {
     union Identifier            identifier;
     enum EntryType              type;
     size_t                      address;
-    struct LookupListEntry      *next;
 };
 
 struct MissingRefListEntry {
     int                         label;
     size_t                      address;
-    struct MissingRefListEntry  *next;
 };
 
 struct Program {
-    struct LookupListEntry      *lookup_list;
-    struct MissingRefListEntry  *missing_ref_list;
+    struct LookupListEntry      lookup_list[MEMORY_SIZE];
+    struct MissingRefListEntry  missing_ref_list[MEMORY_SIZE];
     word_t                      memory[MEMORY_SIZE];
     size_t                      instruction_ptr;
     size_t                      constants_ptr;
     size_t                      stack_ptr;
+    size_t                      lookup_list_size;
+    size_t                      missing_ref_list_size;
 };
 
 
