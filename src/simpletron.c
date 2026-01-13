@@ -248,7 +248,7 @@ void read_file_sml(struct Simpletron *simpletron, const char *filename) {
         printf("Error reading file '%s'\n\n",  filename);
         exit(1);
     }
-    if (header == HEADER) { // binary file
+    if (header == HEADER) { /* binary file */
         puts("Got binary Simpletron memory state");
         while (!feof(file)) {
             result = fread(

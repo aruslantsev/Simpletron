@@ -38,7 +38,9 @@ size_t search_entry(
         printf(" %d\n", identifier.value);
     }
 #endif
-    for (size_t lookup_list_ptr = 0; lookup_list_ptr < program->lookup_list_size; lookup_list_ptr++) {
+    for (
+        size_t lookup_list_ptr = 0; lookup_list_ptr < program->lookup_list_size; lookup_list_ptr++
+    ) {
 #ifdef DEBUG_LOOKUP_LIST
         printf("Scanning object: %c", program->lookup_list[lookup_list_ptr].type);
         if (program->lookup_list[lookup_list_ptr].type == VAR) {
@@ -56,7 +58,9 @@ size_t search_entry(
             (
                 type == VAR
                 && type == program->lookup_list[lookup_list_ptr].type
-                && strcmp(program->lookup_list[lookup_list_ptr].identifier.name, identifier.name) == 0
+                && strcmp(
+                    program->lookup_list[lookup_list_ptr].identifier.name, identifier.name
+                ) == 0
             )
             || (
                 (type == CONST || type == LINE)
@@ -112,7 +116,6 @@ size_t add_entry(
 #endif
         }
         program->constants_ptr--;
-        // program->stack_ptr--;
     }
 #ifdef DEBUG_LOOKUP_LIST
     printf("Added object: %c", program->lookup_list[program->lookup_list_size].type);
@@ -210,9 +213,9 @@ void strip(char s1[], char s2[]) {
             s1[j++] = buffer[i];
         }
     }
-    // Null-terminate the modified string
+    /* Null-terminate the modified string */
     s1[j] = '\0';
-    // Trim a single trailing space if it exists
+    /* Trim a single trailing space if it exists */
     if (j > 0 && isspace(s1[j - 1])) {
         s1[j - 1] = '\0';
     }
@@ -257,11 +260,11 @@ void parse_line(struct Program *program, char line[], const int line_number) {
 
     /* Second token: rem, let, input, print, goto, if ... goto, end */
     token = strtok(NULL, " ");
-    if (token == NULL) return;  // Empty line
+    if (token == NULL) return;  /* Empty line */
 #ifdef DEBUG_PARSE
     printf("Got keyword '%s'\n", token);
 #endif
-    if (strcmp("rem", token) == 0) return;  // Skip comments
+    if (strcmp("rem", token) == 0) return;  /* Skip comments */
     if (strcmp("input", token) == 0) parse_input(program, line, line_number);
     else if (strcmp("print", token) == 0) parse_print(program, line, line_number);
     else if (strcmp("let", token) == 0) parse_let(program, line, line_number);
@@ -288,9 +291,9 @@ void parse_input(struct Program *program, char line[], const int line_number) {
     puts("Parsing INPUT instruction");
 #endif
     strcpy(buffer, line);
-    strtok(buffer, " ");  // Skip line number
-    strtok(NULL, " ");  // Skip keyword
-    char *token = strtok(NULL, " ,");  // Tokenize remaining string by space of comma
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
+    char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
         printf("Missing variable name after INPUT keyword in line %d", line_number);
         printf("%s\n", line);
@@ -332,9 +335,9 @@ void parse_print(struct Program *program, char line[], const int line_number) {
     puts("Parsing PRINT instruction");
 #endif
     strcpy(buffer, line);
-    strtok(buffer, " ");  // Skip line number
-    strtok(NULL, " ");  // Skip keyword
-    char *token = strtok(NULL, " ,");  // Tokenize remaining string by space of comma
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
+    char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
         printf("Missing variable name after PRINT keyword in line %d", line_number);
         printf("%s\n", line);
@@ -377,8 +380,8 @@ void parse_goto(struct Program *program, char line[], const int line_number) {
     puts("Parsing GOTO instruction");
 #endif
     strcpy(buffer, line);
-    strtok(buffer, " ");  // Skip line number
-    strtok(NULL, " ");  // Skip keyword
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ");
     if (token == NULL) {
         printf("Missing line number after GOTO keyword in line %d\n", line_number);
@@ -436,8 +439,8 @@ void parse_let(struct Program *program, char line[], const int line_number) {
 #endif
     strcpy(buffer, line);
     char *buffer_start = buffer;
-    strtok(buffer, " ");  // Skip line number
-    strtok(NULL, " ");  // Skip keyword
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
 
     char *token = strtok(NULL, " =");
     if (!check_identifier(token)) {
@@ -460,7 +463,7 @@ void parse_let(struct Program *program, char line[], const int line_number) {
         printf("%s\n", line);
         exit(1);
     }
-    size_t str_ptr = token - buffer_start + strlen(token);  // End of variable name
+    size_t str_ptr = token - buffer_start + strlen(token);  /* End of variable name */
     /* Check space between variable name and '='. Should be only spaces */
     for (; line[str_ptr] != '='; str_ptr++) {
         /* End of line before assignment */
@@ -509,10 +512,10 @@ void parse_if(struct Program *program, char line[], const int line_number) {
 #endif
     strcpy(buffer, line);
     const char *buffer_start = buffer;
-    strtok(buffer, " ");  // Skip line number
-    char *token = strtok(NULL, " ");  // Skip keyword
+    strtok(buffer, " ");  /* Skip line number */
+    char *token = strtok(NULL, " ");  /* Skip keyword */
 
-    // Copy from start of left expression
+    /* Copy from start of left expression */
     strcpy(buffer, &line[token - buffer_start + strlen(token)]);
     strip(buffer, buffer);
 #ifdef DEBUG_PARSE
@@ -527,7 +530,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     char expr[BUFFER_SIZE];
     strncpy(expr, buffer, condition_end - buffer);
     expr[condition_end - buffer] = '\0';
-    condition_end += 4;  // Skip GOTO keyword
+    condition_end += 4;  /* Skip GOTO keyword */
     token = strtok(condition_end, " ");
     if (token == NULL) {
         printf("Missing line number after IF..GOTO keyword in line %d\n", line_number);
@@ -693,7 +696,10 @@ bool evaluate_expression(char buffer[], struct Program *program) {
 #endif
     for (size_t token_ptr = 0; token_ptr < num_tokens; token_ptr++) {
 #ifdef DEBUG_EXPRESSION
-        printf("Token '%s' type '%c'\n", expression_tokens[token_ptr].token, expression_tokens[token_ptr].token_type);
+        printf(
+            "Token '%s' type '%c'\n", 
+            expression_tokens[token_ptr].token, expression_tokens[token_ptr].token_type
+        );
 #endif
         if (expression_tokens[token_ptr].token_type == IDENTIFIER) {
             union Identifier identifier;
@@ -714,8 +720,7 @@ bool evaluate_expression(char buffer[], struct Program *program) {
     puts("Second pass. Generating code");
 #endif
 
-    word_t current_stack_pointer = program->stack_ptr;
-    
+    word_t current_stack_pointer = program->stack_ptr;    
     size_t address;
     union Identifier identifier;
     for (size_t token_ptr = 0; token_ptr < num_tokens; token_ptr++) {
@@ -723,7 +728,7 @@ bool evaluate_expression(char buffer[], struct Program *program) {
         printf("Token %s\n", expression_tokens[token_ptr].token);
 #endif
         if (expression_tokens[token_ptr].token_type == IDENTIFIER) {
-            // Load to stack
+            /* Load to stack */
             if (check_integer(expression_tokens[token_ptr].token)) {
                 identifier.value = atoi(expression_tokens[token_ptr].token);
                 address = search_entry(program, identifier, CONST);
