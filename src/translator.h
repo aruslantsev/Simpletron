@@ -26,15 +26,25 @@ struct MissingRefListEntry {
     size_t                      address;
 };
 
+struct ForEntry {
+    word_t                      cycle_begin_address;
+    word_t                      var_address;
+    word_t                      to_address;
+    word_t                      step_address;
+};
+
+
 struct Program {
     struct LookupListEntry      lookup_list[MEMORY_SIZE];
     struct MissingRefListEntry  missing_ref_list[MEMORY_SIZE];
+    struct ForEntry             for_stack[MEMORY_SIZE];
     word_t                      memory[MEMORY_SIZE];
     size_t                      instruction_ptr;
     size_t                      constants_ptr;
     size_t                      stack_ptr;
     size_t                      lookup_list_size;
     size_t                      missing_ref_list_size;
+    size_t                      for_ptr;
 };
 
 
@@ -52,6 +62,8 @@ void parse_print(struct Program *, char [], const int);
 void parse_goto(struct Program *, char [], const int);
 void parse_let(struct Program *, char [], const int);
 void parse_if(struct Program *, char [], const int);
+void parse_for(struct Program *, char [], const int);
+void parse_for_end(struct Program *, char [], const int);
 
 
 

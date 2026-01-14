@@ -22,6 +22,7 @@ void init_program(struct Program *program) {
     program->stack_ptr = program->constants_ptr - NUM_CONSTANTS;
     program->lookup_list_size = 0;
     program->missing_ref_list_size = 0;
+    program->for_ptr = 0;
 }
 
 
@@ -240,7 +241,7 @@ void parse_line(struct Program *program, char line[], const int line_number) {
             identifier.value, line_number
         );
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (search_entry(program, identifier, LINE) != -1) {
         printf(
@@ -248,7 +249,7 @@ void parse_line(struct Program *program, char line[], const int line_number) {
             identifier.value, line_number
         );
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     const size_t address = add_entry(program, identifier, LINE);
 #ifdef DEBUG_PARSE
@@ -270,13 +271,15 @@ void parse_line(struct Program *program, char line[], const int line_number) {
     else if (strcmp("let", token) == 0) parse_let(program, line, line_number);
     else if (strcmp("goto", token) == 0) parse_goto(program, line, line_number);
     else if (strcmp("if", token) == 0) parse_if(program, line, line_number);
+    else if (strcmp("for", token) == 0) parse_for(program, line, line_number);
+    else if (strcmp("next", token) == 0) parse_for_end(program, line, line_number);
     else if (strcmp("end", token) == 0) {
         const word_t instruction = HALT << OPERAND_BITS;
         program->memory[program->instruction_ptr++] = instruction;
     } else {
         printf("Wrong token '%s' in line %d\n", token, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -295,15 +298,15 @@ void parse_input(struct Program *program, char line[], const int line_number) {
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
-        printf("Missing variable name after INPUT keyword in line %d", line_number);
+        printf("Missing variable name after INPUT keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     while (token != NULL) {
         if (!check_identifier(token)) {
-            printf("Wrong variable name %s in line %d", token, line_number);
+            printf("Wrong variable name %s in line %d\n", token, line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
 #ifdef DEBUG_PARSE
@@ -313,7 +316,7 @@ void parse_input(struct Program *program, char line[], const int line_number) {
         if (address == -1) {
             printf("Unknown error in line %d\n", line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         instruction = READ << OPERAND_BITS | address;
 #ifdef DEBUG_PARSE
@@ -339,15 +342,15 @@ void parse_print(struct Program *program, char line[], const int line_number) {
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
-        printf("Missing variable name after PRINT keyword in line %d", line_number);
+        printf("Missing variable name after PRINT keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     while (token != NULL) {
         if (!check_identifier(token)) {
-            printf("Wrong variable name %s in line %d", token, line_number);
+            printf("Wrong variable name %s in line %d\n", token, line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
 #ifdef DEBUG_PARSE
@@ -357,7 +360,7 @@ void parse_print(struct Program *program, char line[], const int line_number) {
         if (address == -1) {
             printf("Unknown error in line %d\n", line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         instruction = WRITE << OPERAND_BITS | address;
 #ifdef DEBUG_PARSE
@@ -386,12 +389,12 @@ void parse_goto(struct Program *program, char line[], const int line_number) {
     if (token == NULL) {
         printf("Missing line number after GOTO keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (!check_integer(token)) {
         printf("Bad line number in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     identifier.value = atoi(token);
     if (identifier.value < 0) {
@@ -400,14 +403,14 @@ void parse_goto(struct Program *program, char line[], const int line_number) {
             identifier.value, line_number
         );
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     token = strtok(NULL, " ");
     if (token != NULL) {
         printf("Error: multiple line numbers after GOTO keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if ((address = search_entry(program, identifier, LINE)) == -1) {
         remember_missing_reference(program, identifier.value);
@@ -444,14 +447,14 @@ void parse_let(struct Program *program, char line[], const int line_number) {
 
     char *token = strtok(NULL, " =");
     if (!check_identifier(token)) {
-        printf("Wrong variable name %s in line %d", token, line_number);
+        printf("Wrong variable name %s in line %d\n", token, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (token == NULL) {
         printf("Missing expression after LET keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
 #ifdef DEBUG_PARSE
@@ -461,7 +464,7 @@ void parse_let(struct Program *program, char line[], const int line_number) {
     if (address == -1) {
         printf("Unknown error in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     size_t str_ptr = token - buffer_start + strlen(token);  /* End of variable name */
     /* Check space between variable name and '='. Should be only spaces */
@@ -470,13 +473,13 @@ void parse_let(struct Program *program, char line[], const int line_number) {
         if (line[str_ptr] == '\0') {
             printf("Unexpected end of line in line %d\n", line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         /* Non-space symbol */
         if (line[str_ptr] != ' ') {
             printf("Wrong format or multiple assignment in line %d\n", line_number);
             printf("%s\n", line);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
     str_ptr++; /* At '=' now */
@@ -489,12 +492,12 @@ void parse_let(struct Program *program, char line[], const int line_number) {
     if (!check_expression(buffer)) {
         printf("Invalid expression '%s' on line %d\n", buffer, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (!evaluate_expression(buffer, program)) {
         printf("Invalid expression '%s' in line %d\n", buffer, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     const word_t instruction = STORE << OPERAND_BITS | address;
     program->memory[program->instruction_ptr++] = instruction;
@@ -525,7 +528,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     if (condition_end == NULL) {
         printf("Missing GOTO in IF statement in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     char expr[BUFFER_SIZE];
     strncpy(expr, buffer, condition_end - buffer);
@@ -535,7 +538,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     if (token == NULL) {
         printf("Missing line number after IF..GOTO keyword in line %d\n", line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (!check_integer(token)) {
         printf("Bad line number in line %d\n", line_number);
@@ -548,7 +551,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
             identifier.value, line_number
         );
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     bool add_missing = false;
     if ((address = search_entry(program, identifier, LINE)) == -1) {
@@ -565,7 +568,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
             line_number
         );
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     char left_expression[BUFFER_SIZE];
@@ -589,7 +592,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     } else {
         printf("Can't find comparison in expression '%s' in line %d\n", expr, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     strncpy(left_expression, expr, comparison_position - expr);
@@ -619,7 +622,7 @@ void parse_if(struct Program *program, char line[], const int line_number) {
                 "Unknown comparison type in expression '%s' in line %d\n",
                 expr, line_number
             );
-            exit(1);
+            exit(EXIT_FAILURE);
             break;
     }
 
@@ -629,13 +632,13 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     if (!check_expression(transformed_expression)) {
         printf("Invalid expression '%s' on line %d\n", buffer, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     
     if (!evaluate_expression(transformed_expression, program)) {
         printf("Invalid expression '%s' in line %d\n", buffer, line_number);
         printf("%s\n", line);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     switch (comparison) {
@@ -672,9 +675,166 @@ void parse_if(struct Program *program, char line[], const int line_number) {
                 "Unknown comparison type in expression '%s' in line %d\n",
                 expr, line_number
             );
-            exit(1);
+            printf("%s\n", line);
+            exit(EXIT_FAILURE);
             break;
     }
+}
+
+
+void parse_for(struct Program *program, char line[], const int line_number) {
+    word_t instruction;
+    char buffer[BUFFER_SIZE];
+    union Identifier identifier;
+    size_t var_address, from_address, to_address, step_address;
+    word_t start_value, end_value, step;
+
+#ifdef DEBUG_PARSE
+    puts("Parsing FOR instruction");
+#endif
+// FOR i = 5 to 10 step 2
+// NEXT
+    strcpy(buffer, line);
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
+    char *token = strtok(NULL, " ");  /* Identifier */
+    if (token == NULL || !check_identifier(token)) {
+        printf("Missing or bad identifier '%s' in line %d\n", token, line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
+#ifdef DEBUG_PARSE
+    printf("Adding variable %s\n", identifier.name);
+#endif
+    var_address = search_or_add_entry(program, identifier, VAR);
+    token = strtok(NULL, " ="); /* Not strict. Better to parse char by char */
+    /* Start value */
+    if (token == NULL) {
+        printf("Wrong or missing start value in line %d\n", line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    from_address = -1;
+    if (check_integer(token)) {
+        identifier.value = atoi(token);
+        from_address = search_or_add_entry(program, identifier, CONST);
+    } else if (check_identifier(token)) {
+        strcpy(identifier.name, token);
+        from_address = search_entry(program, identifier, VAR);
+    } 
+    if (from_address == -1) {
+        printf("Bad identifier '%s' in line %d\n", token, line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    /* to */
+    token = strtok(NULL, " ");
+    if (token == NULL || strcmp("to", token) != 0) {
+        printf("Missing TO after FOR in line %d\n", line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    /* End value */
+    token = strtok(NULL, " ");
+    if (token == NULL) {
+        printf("Wrong or missing end value in line %d\n", line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    to_address = -1;
+    if (check_integer(token)) {
+        identifier.value = atoi(token);
+        to_address = search_or_add_entry(program, identifier, CONST);
+    } else if (check_identifier(token)) {
+        strcpy(identifier.name, token);
+        to_address = search_entry(program, identifier, VAR);
+    } 
+    if (to_address == -1) {
+        printf("Bad identifier '%s' in line %d\n", token, line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+    token = strtok(NULL, " ");
+    if (token == NULL) {
+        step = 1;
+        identifier.value = step;
+        step_address = search_or_add_entry(program, identifier, CONST);
+    } else {
+        if (strcmp("step", token) != 0) {
+            printf("Wrong token '%s' in FOR in line %d\n", token, line_number);
+            printf("%s\n", line);
+            exit(EXIT_FAILURE);
+        }
+        token = strtok(NULL, " ");
+        if (token == NULL) {
+            printf("Wrong or missing step value in line %d\n", line_number);
+            printf("%s\n", line);
+            exit(EXIT_FAILURE);
+        }
+        step_address = -1;
+        if (check_integer(token)) {
+            identifier.value = atoi(token);
+            step_address = search_or_add_entry(program, identifier, CONST);
+        } else if (check_identifier(token)) {
+            strcpy(identifier.name, token);
+            step_address = search_entry(program, identifier, VAR);
+        } 
+        if (step_address == -1) {
+            printf("Bad identifier '%s' in line %d\n", token, line_number);
+            printf("%s\n", line);
+            exit(EXIT_FAILURE);
+        }
+    }
+    instruction = LOAD << OPERAND_BITS | from_address;
+    program->memory[program->instruction_ptr++] = instruction;
+    instruction = STORE << OPERAND_BITS | var_address;
+    program->memory[program->instruction_ptr++] = instruction;
+
+    program->for_stack[program->for_ptr++] = (struct ForEntry) {
+        .cycle_begin_address=program->instruction_ptr,
+        .var_address=var_address,
+        .to_address=to_address, 
+        .step_address=step_address
+    };
+}
+
+
+
+void parse_for_end(struct Program *program, char line[], const int line_number) {
+    word_t instruction;
+    char buffer[BUFFER_SIZE];
+    union Identifier identifier;
+    size_t address;
+
+#ifdef DEBUG_PARSE
+    puts("Parsing NEXT instruction");
+#endif
+    strcpy(buffer, line);
+    strtok(buffer, " ");  /* Skip line number */
+    strtok(NULL, " ");  /* Skip keyword */
+    char *token = strtok(NULL, " ");  /* Tokenize remaining string by space of comma */
+    if (token != NULL) {
+        printf("Extra symbols after NEXT keyword in line %d\n", line_number);
+        printf("%s\n", line);
+        exit(EXIT_FAILURE);
+    }
+
+    const struct ForEntry entry = program->for_stack[--program->for_ptr];
+    instruction = LOAD << OPERAND_BITS | entry.var_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = ADD << OPERAND_BITS | entry.step_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = STORE << OPERAND_BITS | entry.var_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = LOAD << OPERAND_BITS | entry.to_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = SUBTRACT << OPERAND_BITS | entry.var_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = BRANCHZERO << OPERAND_BITS | entry.cycle_begin_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
+    instruction = BRANCHNEG << OPERAND_BITS | entry.cycle_begin_address;
+    instruction = program->memory[program->instruction_ptr++] = instruction;
 }
 
 
