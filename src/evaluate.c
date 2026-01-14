@@ -5,11 +5,11 @@
 #include <stdbool.h>
 #include "evaluate.h"
 
-#define DEBUG_EVAL
+// #define DEBUG_EVAL
 
 
 bool is_arithmetic_operation(const char c) {
-    return c == '+' || c == '-' || c == '*' || c == '/' || c == '%';
+    return c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^';
 }
 
 
@@ -19,9 +19,13 @@ bool is_parentheses(const char c) {
 
 
 int compare_operations(const char op1, const char op2) {
+    if (op1 == '^' && op2 != '^')
+        return 1;
+    if (op1 != '^' && op2 == '^')
+        return -1;
     if ((op1 == '+' || op1 == '-') && (op2 == '*' || op2 == '/' || op2 == '%'))
         return -1;
-    if ((op1 == '*' || op1 == '/' || op2 == '%') && (op2 == '+' || op2 == '-'))
+    if ((op1 == '*' || op1 == '/' || op1 == '%') && (op2 == '+' || op2 == '-'))
         return 1;
     return 0;
 }
@@ -221,7 +225,7 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                 && stack[stack_ptr - 1].token_type == OPERATION 
                 && compare_operations(
                     infix[infix_ptr].token[0], stack[stack_ptr - 1].token[0]
-                ) < 0
+                ) <= 0
             ) {
 #ifdef DEBUG_EVAL
                 printf(

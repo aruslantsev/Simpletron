@@ -6,7 +6,7 @@
 #include "simpletron.h"
 
 
-#define DEBUG
+// #define DEBUG
 
 int main(const int argc, char *argv[]) {
     if (argc != 3 || strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "-h") == 0) {
@@ -32,11 +32,15 @@ int main(const int argc, char *argv[]) {
     while (!feof(program_file)) {
         if (fgets(buffer, BUFFER_SIZE, program_file) != NULL) {
             line_number++;
+#ifdef DEBUG
             printf("%s", buffer);
+#endif
             /* Remove trailing newline symbols before tokenization */
             buffer[strcspn(buffer, "\r\n")] = '\0';
             strip(buffer, buffer);
+#ifdef DEBUG
             printf("%s\n", buffer);
+#endif
             /* Skip empty string */
             if (strlen(buffer) == 0) continue;
             parse_line(&program, buffer, line_number);
@@ -47,7 +51,11 @@ int main(const int argc, char *argv[]) {
 #ifdef DEBUG
     puts("Resolving remaining references");
 #endif
-    for (size_t missing_ref_list_ptr = 0; missing_ref_list_ptr < program.missing_ref_list_size; missing_ref_list_ptr++) {
+    for (
+        size_t missing_ref_list_ptr = 0;
+        missing_ref_list_ptr < program.missing_ref_list_size; 
+        missing_ref_list_ptr++
+    ) {
         identifier.value = program.missing_ref_list[missing_ref_list_ptr].label;
         address = search_entry(&program, identifier, LINE);
         if (address == -1) {
@@ -67,8 +75,9 @@ int main(const int argc, char *argv[]) {
     }
     fclose(program_file);
 
-    /* Write program */
+#ifdef DEBUG
     puts("Writing program");
+#endif
     FILE *sml_file = fopen(argv[2], "w");
     char char_instruction[WORD_BITS / 4 + 2];
     for (int instructionPtr = 0; instructionPtr < MEMORY_SIZE; instructionPtr++) {

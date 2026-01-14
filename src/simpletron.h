@@ -42,10 +42,11 @@ typedef int64_t dword_t;
 #define STORE               0x21  /* Save accumulator to memory */
 /* Arithmetic operations */
 #define ADD                 0x30  /* Add to accumulator value from memory */
-#define SUBTRACT            0x31  /* Subtract value from memory from accumulator */
+#define SUBTRACT            0x31  /* Subtract accumulator from value from memory */
 #define DIVIDE              0x32  /* Divide value from memory into accumulator */
 #define MULTIPLY            0x33  /* Multiply value from memory into accumulator */
 #define REMAINDER           0x34  /* Divide value from memory into accumulator and save remainder */
+#define POWER               0x35  /* Raise value from memory to a power from accumulator */
 /* Transfer or control operations */
 #define BRANCH              0x40  /* Go to specified location */
 #define BRANCHNEG           0x41  /* Go to specified location if accumulator is negative */

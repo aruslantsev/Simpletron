@@ -7,10 +7,10 @@
 #include "evaluate.h"
 
 
-#define DEBUG_LOOKUP_LIST
-#define DEBUG_MISSING_REF_LIST
-#define DEBUG_PARSE
-#define DEBUG_EXPRESSION
+// #define DEBUG_LOOKUP_LIST
+// #define DEBUG_MISSING_REF_LIST
+// #define DEBUG_PARSE
+// #define DEBUG_EXPRESSION
 
 
 void init_program(struct Program *program) {
@@ -623,7 +623,9 @@ void parse_if(struct Program *program, char line[], const int line_number) {
             break;
     }
 
-    printf("%s\n", transformed_expression);
+#ifdef DEBUG_PARSE
+    printf("Expression to evaluate: '%s'\n", transformed_expression);
+#endif
     if (!check_expression(transformed_expression)) {
         printf("Invalid expression '%s' on line %d\n", buffer, line_number);
         printf("%s\n", line);
@@ -771,6 +773,9 @@ bool evaluate_expression(char buffer[], struct Program *program) {
                     break;
                 case '%':
                     instruction = REMAINDER;
+                    break;
+                case '^':
+                    instruction = POWER;
                     break;
                 default:
                     printf("Unknown operation '%c'\n", expression_tokens[token_ptr].token[0]);
