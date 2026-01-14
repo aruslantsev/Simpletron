@@ -73,6 +73,27 @@ int main(const int argc, char *argv[]) {
 #endif
         program.memory[program.missing_ref_list[missing_ref_list_ptr].address] |= address;
     }
+
+    /* Fill stack offsets */
+    for (
+        size_t stack_offsets_ptr = 0;
+        stack_offsets_ptr < program.stack_offset_list_size; 
+        stack_offsets_ptr++
+    ) {
+
+#ifdef DEBUG
+        printf(
+            "Instruction at address %0X has stack offset %d. Real address: %ld (%0x)\n",
+            (word_t) program.stack_offset_list[stack_offsets_ptr].address, 
+            program.stack_offset_list[stack_offsets_ptr].offset, 
+            program.constants_ptr - program.stack_offset_list[stack_offsets_ptr].offset, 
+            (uword_t) (program.constants_ptr - program.stack_offset_list[stack_offsets_ptr].offset)
+        );
+#endif
+        program.memory[program.stack_offset_list[stack_offsets_ptr].address] |= (
+            program.constants_ptr - program.stack_offset_list[stack_offsets_ptr].offset
+        );
+    }
     fclose(program_file);
 
 #ifdef DEBUG

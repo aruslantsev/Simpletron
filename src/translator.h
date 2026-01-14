@@ -34,10 +34,17 @@ struct ForEntry {
 };
 
 
+struct StackOffsetEntry {
+    word_t                      address;
+    word_t                      offset;
+};
+
+
 struct Program {
     struct LookupListEntry      lookup_list[MEMORY_SIZE];
     struct MissingRefListEntry  missing_ref_list[MEMORY_SIZE];
     struct ForEntry             for_stack[MEMORY_SIZE];
+    struct StackOffsetEntry     stack_offset_list[MEMORY_SIZE];
     word_t                      memory[MEMORY_SIZE];
     size_t                      instruction_ptr;
     size_t                      constants_ptr;
@@ -45,6 +52,7 @@ struct Program {
     size_t                      lookup_list_size;
     size_t                      missing_ref_list_size;
     size_t                      for_ptr;
+    size_t                      stack_offset_list_size;
 };
 
 

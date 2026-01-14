@@ -19,10 +19,11 @@ void init_program(struct Program *program) {
     }
     program->instruction_ptr = 0;
     program->constants_ptr = MEMORY_SIZE - 1;
-    program->stack_ptr = program->constants_ptr - NUM_CONSTANTS;
+    program->stack_ptr = 0;
     program->lookup_list_size = 0;
     program->missing_ref_list_size = 0;
     program->for_ptr = 0;
+    program->stack_offset_list_size = 0;
 }
 
 
@@ -170,6 +171,16 @@ void remember_missing_reference(struct Program *program, const int identifier) {
 #ifdef DEBUG_MISSING_REF_LIST
     puts("Done.");
 #endif
+}
+
+
+void remember_stack_offset(struct Program *program, const word_t address, const word_t offset) {
+#ifdef DEBUG_STACK
+    printf("Adding record with stack offset l%d at for address %ld\n", offset, address);
+#endif
+    program->stack_offset_list[program->stack_offset_list_size++] = (struct StackOffsetEntry) {
+        .address = address, .offset=offset
+    };
 }
 
 
@@ -906,14 +917,17 @@ bool evaluate_expression(char buffer[], struct Program *program) {
             printf("From memory OPCODE %X", (word_t) instruction);
 #endif
             program->memory[program->instruction_ptr++] = instruction;
-            address = program->stack_ptr--;
-            instruction = STORE << OPERAND_BITS | address;
+            address = program->stack_ptr++;
+            remember_stack_offset(program, program->instruction_ptr, address);
+            instruction = STORE << OPERAND_BITS;
 #ifdef DEBUG_EXPRESSION
             printf(" to stack OPCODE %X\n", (word_t) instruction);
 #endif
             program->memory[program->instruction_ptr++] = instruction;
         } else if (expression_tokens[token_ptr].token_type == OPERATION) {
-            instruction = LOAD << OPERAND_BITS | ++(program->stack_ptr);
+            address = --(program->stack_ptr);
+            remember_stack_offset(program, program->instruction_ptr, address);
+            instruction = LOAD << OPERAND_BITS;
 #ifdef DEBUG_EXPRESSION
             printf("From stack OPCODE %X to accumulator. ", (word_t) instruction);
 #endif
@@ -941,12 +955,16 @@ bool evaluate_expression(char buffer[], struct Program *program) {
                     printf("Unknown operation '%c'\n", expression_tokens[token_ptr].token[0]);
                     return false;
             }
-            instruction = instruction << OPERAND_BITS | ++(program->stack_ptr);
+            address = --(program->stack_ptr);
+            remember_stack_offset(program, program->instruction_ptr, address);
+            instruction = instruction << OPERAND_BITS;
 #ifdef DEBUG_EXPRESSION
             printf(" Arithmetic operation OPCODE %X.", (word_t) instruction);
 #endif
             program->memory[program->instruction_ptr++] = instruction;
-            instruction = STORE << OPERAND_BITS | program->stack_ptr--;
+            address = program->stack_ptr++;
+            remember_stack_offset(program, program->instruction_ptr, address);
+            instruction = STORE << OPERAND_BITS;
 #ifdef DEBUG_EXPRESSION
             printf(" To stack %X\n", (word_t) instruction);
 #endif
@@ -958,7 +976,9 @@ bool evaluate_expression(char buffer[], struct Program *program) {
     }
 
     /* Placing result into accumulator */
-    instruction = LOAD << OPERAND_BITS | ++(program->stack_ptr);
+    address = --(program->stack_ptr);
+    remember_stack_offset(program, program->instruction_ptr, address);
+    instruction = LOAD << OPERAND_BITS;
     program->memory[program->instruction_ptr++] = instruction;
 #ifdef DEBUG_EXPRESSION
     printf("Placing result in accumulator OPCODE %X\n", instruction);

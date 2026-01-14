@@ -1,4 +1,3 @@
-FIND all variables and constants, only after it set stack pointer
 ADD support for arrays of integer
 ADD subroutines GOSUB...RETURN
 ADD float support
