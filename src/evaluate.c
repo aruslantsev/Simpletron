@@ -65,7 +65,7 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                                 infix[num_infix_tokens - 2].token_type == OPERATION 
                                 || (
                                     infix[num_infix_tokens - 2].token_type == PARENTHESES 
-                                    && infix[num_infix_tokens - 2].token == '('
+                                    && infix[num_infix_tokens - 2].token[0] == '('
                                 )
                             )
                             && infix[num_infix_tokens - 1].token_type == OPERATION
