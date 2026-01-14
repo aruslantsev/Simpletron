@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "simpletron.h"
 // TODO: strings processing: optimize, use one byte to save one symbol
 
@@ -162,6 +163,11 @@ enum Status execute_operation(struct Simpletron *simpletron) {
                 puts(ERRMSG);
                 return FAIL;
             }
+            break;
+        case POWER:
+            simpletron->accumulator = (word_t) pow(
+                simpletron->memory[simpletron->operand], simpletron->accumulator
+            );
             break;
         case BRANCH:
             simpletron->instruction_counter = simpletron->operand;
