@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define WORD_BITS           16  // Instruction == one word
+#define WORD_BITS           16  /* Instruction == one wordr */
 #define OPCODE_BITS         8
 
 #if WORD_BITS == 8
 typedef int8_t word_t;
 typedef uint8_t uword_t;
-typedef int16_t dword_t;  // Extended word for input values, converted to word before assignment
+typedef int16_t dword_t;  /* Extended word for input values, converted to word before assignmentr */
 #elif WORD_BITS == 16
 typedef int16_t word_t;
 typedef uint16_t uword_t;
@@ -22,33 +22,35 @@ typedef int64_t dword_t;
 #endif
 
 #define OPERAND_BITS        (WORD_BITS - OPCODE_BITS)
-#define MEMORY_SIZE         (1 << OPERAND_BITS)  // Memory address stored in operand
+#define MEMORY_SIZE         (1 << OPERAND_BITS)  /* Memory address stored in operandr */
 
-#define USER_INPUT_LENGTH   (2 + 1 + WORD_BITS)  // max width for 0b00000000, 2 for 0b, 1 for \0
+#define CHARS_WORD          (WORD_BITS / 8) /* Number of chars in one word */
+
+#define USER_INPUT_LENGTH   (2 + 1 + WORD_BITS)  /* max width for 0b00000000, 2 for 0b, 1 for \0r */
 #define MAX_VALUE           (1 << WORD_BITS)
 #define STOP_VALUE          MAX_VALUE
 
 /* Instructions */
 #define NOP                 0x00
 /* I/O operations */
-#define READ                0x10  // Read value from keyboard and save to memory
-#define WRITE               0x11  // Print value from memory
-#define READSTR             0x12  // Read string from keyboard to memory
-#define WRITESTR            0x13  // Print string from memory
+#define READ                0x10  /* Read value from keyboard and save to memoryr */
+#define WRITE               0x11  /* Print value from memoryr */
+#define READSTR             0x12  /* Read string from keyboard to memoryr */
+#define WRITESTR            0x13  /* Print string from memoryr */
 /* Accumulator register operations */
-#define LOAD                0x20  // Load from memory to accumulator
-#define STORE               0x21  // Save accumulator to memory
+#define LOAD                0x20  /* Load from memory to accumulatorr */
+#define STORE               0x21  /* Save accumulator to memoryr */
 /* Arithmetic operations */
-#define ADD                 0x30  // Add to accumulator value from memory
-#define SUBTRACT            0x31  // Subtract value from memory from accumulator
-#define DIVIDE              0x32  // Divide value from memory into accumulator
-#define MULTIPLY            0x33  // Multiply value from memory into accumulator
-#define REMAINDER           0x34  // Divide value from memory into accumulator and save remainder
+#define ADD                 0x30  /* Add to accumulator value from memoryr */
+#define SUBTRACT            0x31  /* Subtract value from memory from accumulatorr */
+#define DIVIDE              0x32  /* Divide value from memory into accumulatorr */
+#define MULTIPLY            0x33  /* Multiply value from memory into accumulatorr */
+#define REMAINDER           0x34  /* Divide value from memory into accumulator and save remainderr */
 /* Transfer or control operations */
-#define BRANCH              0x40  // Go to specified location
-#define BRANCHNEG           0x41  // Go to specified location if accumulator is negative
-#define BRANCHZERO          0x42  // Go to specified location if accumulator is zero
-#define HALT                0x43  // Stop execution
+#define BRANCH              0x40  /* Go to specified locationr */
+#define BRANCHNEG           0x41  /* Go to specified location if accumulator is negativer */
+#define BRANCHZERO          0x42  /* Go to specified location if accumulator is zeror */
+#define HALT                0x43  /* Stop executionr */
 
 #define MAX_COLS            0x10
 #define SPACES              2
@@ -58,12 +60,12 @@ typedef int64_t dword_t;
 #define SUCCESSMSG          "\n*** Simpletron execution terminated ***\n"
 
 struct Simpletron {
-    word_t memory[MEMORY_SIZE];    /* memory array */
+    word_t memory[MEMORY_SIZE];     /* memory array */
     word_t instruction_counter;     /* current location in memory */
     word_t instruction_register;    /* current instruction from memory */
     word_t operation_code;          /* current decoded operation */
-    word_t operand;                /* current decoded operand */
-    word_t accumulator;            /* accumulator register */
+    word_t operand;                 /* current decoded operand */
+    word_t accumulator;             /* accumulator register */
 };
 
 enum Status {STOP, SUCCESS, FAIL};

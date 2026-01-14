@@ -74,6 +74,7 @@ enum Status execute_operation(struct Simpletron *simpletron) {
     /* Execute instruction */
     size_t memptr = simpletron->operand;
     int strchar;
+    size_t word_idx = 0;
 
     switch (simpletron->operation_code) {
         case NOP:
@@ -93,15 +94,28 @@ enum Status execute_operation(struct Simpletron *simpletron) {
             break;
         case READSTR:
             printf("%s", "<- ");
-            while ((strchar = getchar()) != '\n') {
-                simpletron->memory[memptr++] = (uword_t) strchar;
-            }
+            word_idx = 0;
             simpletron->memory[memptr] = 0;
+            while ((strchar = getchar()) != '\n') {
+                simpletron->memory[memptr] |= ((uint8_t) strchar) << (8 * word_idx++);
+                if (word_idx >= CHARS_WORD) {
+                    word_idx = 0;
+                    memptr++;
+                    simpletron->memory[memptr] = 0;
+                }
+            }
+            simpletron->memory[memptr] |= ((uint8_t) 0) << word_idx;
             break;
         case WRITESTR:
             printf("%s", "-> ");
-            while ((strchar = (int) simpletron->memory[memptr++]) != 0)
+            word_idx = 0;
+            while ((strchar = (int8_t) (simpletron->memory[memptr] >> (8 * word_idx++))) != 0) {
                 putchar(strchar);
+                if (word_idx >= CHARS_WORD) {
+                    word_idx = 0;
+                    memptr++;
+                }
+            }
             putchar('\n');
             break;
         case LOAD:
