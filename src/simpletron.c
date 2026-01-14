@@ -105,7 +105,7 @@ enum Status execute_operation(struct Simpletron *simpletron) {
                     simpletron->memory[memptr] = 0;
                 }
             }
-            simpletron->memory[memptr] |= ((uint8_t) 0) << word_idx;
+            simpletron->memory[memptr] &= ((uint8_t) 0) << word_idx; /* Force terminate string */
             break;
         case WRITESTR:
             printf("%s", "-> ");
