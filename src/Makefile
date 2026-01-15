@@ -1,6 +1,6 @@
 CC=cc
-CFLAGS=
-LDFLAGS=-lm
+CFLAGS:=${CFLAGS} -std=c99 -Wall -Wextra
+LDFLAGS:=${LDFLAGS} -lm
 
 .PHONY: all clean
 .DEFAULT_GOAL: all
