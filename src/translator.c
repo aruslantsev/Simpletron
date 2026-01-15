@@ -56,8 +56,7 @@ word_t search_entry(
 word_t add_entry(
     struct Program *program,
     const union Identifier identifier,
-    const enum EntryType type)
-{
+    const enum EntryType type) {
     program->lookup_list[program->lookup_list_size].identifier = identifier;
     program->lookup_list[program->lookup_list_size].type = type;
 
@@ -81,8 +80,7 @@ word_t add_entry(
 word_t search_or_add_entry(
     struct Program *program,
     const union Identifier identifier,
-    const enum EntryType type)
-{
+    const enum EntryType type) {
     const word_t address = search_entry(program, identifier, type);
     if (address != OBJ_NOT_FOUND) {
         return address;
