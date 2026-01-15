@@ -7,11 +7,6 @@
 #include "evaluate.h"
 
 
-// #define DEBUG_LOOKUP_LIST
-// #define DEBUG_MISSING_REF_LIST
-// #define DEBUG_PARSE
-// #define DEBUG_EXPRESSION
-
 
 void init_program(struct Program *program) {
     for (size_t ptr = 0; ptr < MEMORY_SIZE; ptr++) {
@@ -27,35 +22,16 @@ void init_program(struct Program *program) {
 }
 
 
-size_t search_entry(
+/* Searches object's memory address in lookup list */
+word_t search_entry (
     struct Program *program,
     const union Identifier identifier,
     const enum EntryType type
 ) {
-#ifdef DEBUG_LOOKUP_LIST
-    printf("Searching for %c", type);
-    if (type == VAR) {
-        printf(" %s\n",identifier.name);
-    } else {
-        printf(" %d\n", identifier.value);
-    }
-#endif
     for (
         size_t lookup_list_ptr = 0; lookup_list_ptr < program->lookup_list_size; lookup_list_ptr++
     ) {
-#ifdef DEBUG_LOOKUP_LIST
-        printf("Scanning object: %c", program->lookup_list[lookup_list_ptr].type);
-        if (program->lookup_list[lookup_list_ptr].type == VAR) {
-            printf(" %s", program->lookup_list[lookup_list_ptr].identifier.name);
-        } else {
-            printf(" %d", program->lookup_list[lookup_list_ptr].identifier.value);
-        }
-        printf(
-            ", address %ld (%0X)\n",
-            program->lookup_list[lookup_list_ptr].address, 
-            (uword_t) program->lookup_list[lookup_list_ptr].address
-        );
-#endif
+        /* Check for matching type and name (for variable) or value (for constant or line number )*/
         if (
             (
                 type == VAR
@@ -70,120 +46,66 @@ size_t search_entry(
                 && program->lookup_list[lookup_list_ptr].identifier.value == identifier.value
             )
         ) {
-#ifdef DEBUG_LOOKUP_LIST
-            printf(
-                "Found, address: %ld (%0X)\n",
-                program->lookup_list[lookup_list_ptr].address, 
-                (uword_t) program->lookup_list[lookup_list_ptr].address
-            );
-#endif
             return program->lookup_list[lookup_list_ptr].address;
         }
     }
-#ifdef DEBUG_LOOKUP_LIST
-    puts("Not found");
-#endif
-    return -1;
+    return OBJ_NOT_FOUND;
 }
 
-
-size_t add_entry(
+/* Adds object to lookup list */
+word_t add_entry(
     struct Program *program,
     const union Identifier identifier,
     const enum EntryType type
 ) {
-#ifdef DEBUG_LOOKUP_LIST
-    printf("Adding %c", type);
-    if (type == VAR) {
-        printf(" %s\n",identifier.name);
-    } else {
-        printf(" %d\n", identifier.value);
-    }
-#endif
     program->lookup_list[program->lookup_list_size].identifier = identifier;
     program->lookup_list[program->lookup_list_size].type = type;
 
     if (type == LINE) {
         program->lookup_list[program->lookup_list_size].address = program->instruction_ptr;
     } else {
+        /* Reserving memory */
         program->lookup_list[program->lookup_list_size].address = program->constants_ptr;
         if (type == CONST) {
+            /* Writing constant value to memory */
             program->memory[program->constants_ptr] = identifier.value;
-#ifdef DEBUG_LOOKUP_LIST
-            printf(
-                "Writing constant value %d (%0X) at %ld (%0X)\n",
-                identifier.value, (word_t) identifier.value,
-                program->constants_ptr, (uword_t) program->constants_ptr
-            );
-#endif
         }
         program->constants_ptr--;
     }
-#ifdef DEBUG_LOOKUP_LIST
-    printf("Added object: %c", program->lookup_list[program->lookup_list_size].type);
-    if (program->lookup_list[program->lookup_list_size].type == VAR) {
-        printf(" %s", program->lookup_list[program->lookup_list_size].identifier.name);
-    } else {
-        printf(" %d", program->lookup_list[program->lookup_list_size].identifier.value);
-    }
-    printf(
-        ", address %ld (%0X)\n", 
-        program->lookup_list[program->lookup_list_size].address, 
-        (uword_t) program->lookup_list[program->lookup_list_size].address
-    );
-#endif
     program->lookup_list_size++;
     return program->lookup_list[program->lookup_list_size - 1].address;
 }
 
-
-size_t search_or_add_entry(
+/* Searches object's memory address in lookup list 
+ * and adds object to lookup list if was not found */
+word_t search_or_add_entry(
     struct Program *program,
     const union Identifier identifier,
-    const enum EntryType type
-) {
-#ifdef DEBUG_LOOKUP_LIST
-    printf("Searching and adding %c", type);
-    if (type == VAR) {
-        printf(" %s\n",identifier.name);
-    } else {
-        printf(" %d\n", identifier.value);
-    }
-#endif
-    const size_t address = search_entry(program, identifier, type);
-    if (address != -1) {
+    const enum EntryType type) {
+    const word_t address = search_entry(program, identifier, type);
+    if (address != OBJ_NOT_FOUND) {
         return address;
     }
     return add_entry(program, identifier, type);
 }
 
-
+/* Saves reference to line, that was not still processed */
 void remember_missing_reference(struct Program *program, const int identifier) {
-#ifdef DEBUG_MISSING_REF_LIST
-    printf(
-        "Adding missing reference to row number %d for address %ld (%0X)\n",
-        identifier, program->instruction_ptr, (uword_t) program->instruction_ptr
-    );
-#endif
     program->missing_ref_list[program->missing_ref_list_size++] = (struct MissingRefListEntry) {
         .label=identifier, .address=program->instruction_ptr
     };
-#ifdef DEBUG_MISSING_REF_LIST
-    puts("Done.");
-#endif
 }
 
 
+/* Saves stack offset for instruction at specified address */
 void remember_stack_offset(struct Program *program, const word_t address, const word_t offset) {
-#ifdef DEBUG_STACK
-    printf("Adding record with stack offset l%d at for address %ld\n", offset, address);
-#endif
     program->stack_offset_list[program->stack_offset_list_size++] = (struct StackOffsetEntry) {
-        .address = address, .offset=offset
+        .address=address, .offset=offset
     };
 }
 
 
+/* Checks if provided string can be variable name */
 bool check_identifier(char identifier[]) {
     if (strlen(identifier) == 0) return false;
     if (!isalpha(identifier[0]) && identifier[0] != '_') return false;
@@ -196,6 +118,7 @@ bool check_identifier(char identifier[]) {
 }
 
 
+/* Checks if provided string is integer value */
 bool check_integer(char value[]) {
     if (strlen(value) == 0) return false;
     const char *ptr = value;
@@ -209,9 +132,9 @@ bool check_integer(char value[]) {
 }
 
 
-void strip(char s1[], char s2[]) {
-    /* Remove leading and trailing spaces and replace duplicated spaces in s2,
-     * save result in s1. s2 remains unmodified */
+/* Removes leading and trailing spaces and replace duplicated spaces in s2,
+ * saves result in s1. s2 remains unmodified */
+void strip(char s1[], const char s2[]) {
     char buffer[BUFFER_SIZE];
     strcpy(buffer, s2);
     int i = 0, j = 0;
@@ -234,296 +157,198 @@ void strip(char s1[], char s2[]) {
 }
 
 
-void parse_line(struct Program *program, char line[], const int line_number) {
+bool parse_line(struct Program *program, char line[], const int line_number) {
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
     strcpy(buffer, line);
 
     /* First token: line number */
     char *token = strtok(buffer, " ");
-    if (!check_integer(token)) {
-        printf("Wrong line number in line %d\n", line_number);
-        printf("%s\n", line);
+    if (!check_integer(token) || (identifier.value = atoi(token)) < 0) {
+        printf("Bad or negative line number on line %d\n", line_number);
+        return false;
     }
-    identifier.value = atoi(token);
-    if (identifier.value < 0) {
+    if (search_entry(program, identifier, LINE) != OBJ_NOT_FOUND) {
         printf(
-            "Line number %d should be non-negative in line %d\n",
+            "Error: duplicated line number '%d' on line %d\n",
             identifier.value, line_number
         );
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        return false;
     }
-    if (search_entry(program, identifier, LINE) != -1) {
-        printf(
-            "Error: duplicated line number '%d' in line %d\n",
-            identifier.value, line_number
-        );
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (add_entry(program, identifier, LINE) == OBJ_NOT_FOUND) {
+        printf("Unknown error on line %d\n", line_number);
+        return false;
     }
-    const size_t address = add_entry(program, identifier, LINE);
-#ifdef DEBUG_PARSE
-    printf(
-        "Added entry for line %d in table, address %ld (%0X)\n",
-        identifier.value, address, (uword_t) address
-    );
-#endif
 
-    /* Second token: rem, let, input, print, goto, if ... goto, end */
+    /* Second token: keyword */
     token = strtok(NULL, " ");
-    if (token == NULL) return;  /* Empty line */
-#ifdef DEBUG_PARSE
-    printf("Got keyword '%s'\n", token);
-#endif
-    if (strcmp("rem", token) == 0) return;  /* Skip comments */
-    if (strcmp("input", token) == 0) parse_input(program, line, line_number);
-    else if (strcmp("print", token) == 0) parse_print(program, line, line_number);
-    else if (strcmp("let", token) == 0) parse_let(program, line, line_number);
-    else if (strcmp("goto", token) == 0) parse_goto(program, line, line_number);
-    else if (strcmp("if", token) == 0) parse_if(program, line, line_number);
-    else if (strcmp("for", token) == 0) parse_for(program, line, line_number);
-    else if (strcmp("next", token) == 0) parse_for_end(program, line, line_number);
+    if (token == NULL) return true;  /* Empty line */
+    if (strcmp("rem", token) == 0) return true;  /* Skip comments */
+    if (strcmp("input", token) == 0) return parse_input(program, line, line_number);
+    else if (strcmp("print", token) == 0) return parse_print(program, line, line_number);
+    else if (strcmp("let", token) == 0) return parse_let(program, line, line_number);
+    else if (strcmp("goto", token) == 0) return parse_goto(program, line, line_number);
+    else if (strcmp("if", token) == 0) return parse_if(program, line, line_number);
+    else if (strcmp("for", token) == 0) return parse_for(program, line, line_number);
+    else if (strcmp("next", token) == 0) return parse_for_end(program, line, line_number);
     else if (strcmp("end", token) == 0) {
         const word_t instruction = HALT << OPERAND_BITS;
         program->memory[program->instruction_ptr++] = instruction;
+        return true;
     } else {
-        printf("Wrong token '%s' in line %d\n", token, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Wrong token '%s' on line %d\n", token, line_number);
+        return false;
     }
+    return false;
 }
 
 
-void parse_input(struct Program *program, char line[], const int line_number) {
-    word_t instruction;
+bool parse_input(struct Program *program, char line[], const int line_number) {
+    word_t instruction, address;
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
-    size_t address;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing INPUT instruction");
-#endif
     strcpy(buffer, line);
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
-        printf("Missing variable name after INPUT keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing variable name after INPUT keyword on line %d\n", line_number);
+        return false;
     }
     while (token != NULL) {
         if (!check_identifier(token)) {
-            printf("Wrong variable name %s in line %d\n", token, line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+            printf("Wrong variable name %s on line %d\n", token, line_number);
+            return false;
         }
         strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
-#ifdef DEBUG_PARSE
-        printf("Adding variable %s\n", identifier.name);
-#endif
         address = search_or_add_entry(program, identifier, VAR);
-        if (address == -1) {
-            printf("Unknown error in line %d\n", line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+        if (address == OBJ_NOT_FOUND) {
+            printf("Unknown error on line %d\n", line_number);
+            return false;
         }
         instruction = READ << OPERAND_BITS | address;
-#ifdef DEBUG_PARSE
-        printf("Instruction %0x\n", instruction);
-#endif
         program->memory[program->instruction_ptr++] = instruction;
         token = strtok(NULL, " ,");
     }
+    return true;
 }
 
 
-void parse_print(struct Program *program, char line[], const int line_number) {
-    word_t instruction;
+bool parse_print(struct Program *program, char line[], const int line_number) {
+    word_t instruction, address;
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
-    size_t address;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing PRINT instruction");
-#endif
     strcpy(buffer, line);
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ,");  /* Tokenize remaining string by space of comma */
     if (token == NULL) {
-        printf("Missing variable name after PRINT keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing variable name after PRINT keyword on line %d\n", line_number);
+        return false;
     }
     while (token != NULL) {
         if (!check_identifier(token)) {
-            printf("Wrong variable name %s in line %d\n", token, line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+            printf("Wrong variable name %s on line %d\n", token, line_number);
+            return false;
         }
         strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
-#ifdef DEBUG_PARSE
-        printf("Adding variable %s\n", identifier.name);
-#endif
         address = search_or_add_entry(program, identifier, VAR);
-        if (address == -1) {
-            printf("Unknown error in line %d\n", line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+        if (address == OBJ_NOT_FOUND) {
+            printf("Unknown error on line %d\n", line_number);
+            return false;
         }
         instruction = WRITE << OPERAND_BITS | address;
-#ifdef DEBUG_PARSE
-        printf("Instruction %0x\n", instruction);
-#endif
         program->memory[program->instruction_ptr++] = instruction;
         token = strtok(NULL, " ,");
     }
+    return true;
 }
 
 
-void parse_goto(struct Program *program, char line[], const int line_number) {
-    word_t instruction;
+bool parse_goto(struct Program *program, char line[], const int line_number) {
+    word_t instruction, address;
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
-    size_t address;
-    bool is_missing = false;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing GOTO instruction");
-#endif
     strcpy(buffer, line);
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ");
     if (token == NULL) {
-        printf("Missing line number after GOTO keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing line number after GOTO keyword on line %d\n", line_number);
+        return false;
     }
-    if (!check_integer(token)) {
-        printf("Bad line number in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (!check_integer(token) || (identifier.value = atoi(token)) < 0) {
+        printf("Bad or negative line number on line %d\n", line_number);
+        return false;
     }
-    identifier.value = atoi(token);
-    if (identifier.value < 0) {
-        printf(
-            "Line number %d should be non-negative in line %d\n",
-            identifier.value, line_number
-        );
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
-    }
-
     token = strtok(NULL, " ");
     if (token != NULL) {
-        printf("Error: multiple line numbers after GOTO keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Error: multiple line numbers after GOTO keyword on line %d\n", line_number);
+        return false;
     }
-    if ((address = search_entry(program, identifier, LINE)) == -1) {
+    if ((address = search_entry(program, identifier, LINE)) == OBJ_NOT_FOUND) {
         remember_missing_reference(program, identifier.value);
         address = 0;
-        is_missing = true;
     }
-#ifdef DEBUG_PARSE
-    printf("GOTO line %d.", identifier.value);
-    if (is_missing) {
-        puts(" Reference is missing.");
-    } else {
-        printf(" Address: %ld\n", address);
-    }
-#endif
     instruction = BRANCH << OPERAND_BITS | address;
-#ifdef DEBUG_PARSE
-    printf("Instruction %0x\n", instruction);
-#endif
     program->memory[program->instruction_ptr++] = instruction;
+    return true;
 }
 
 
-void parse_let(struct Program *program, char line[], const int line_number) {
+bool parse_let(struct Program *program, char line[], const int line_number) {
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing LET instruction");
-#endif
     strcpy(buffer, line);
     char *buffer_start = buffer;
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
 
     char *token = strtok(NULL, " =");
-    if (!check_identifier(token)) {
-        printf("Wrong variable name %s in line %d\n", token, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
-    }
-    if (token == NULL) {
-        printf("Missing expression after LET keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (token == NULL || !check_identifier(token)) {
+        printf("Missing or bad variable name on line %d\n", line_number);
+        return false;
     }
     strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
-#ifdef DEBUG_PARSE
-    printf("Adding variable %s\n", identifier.name);
-#endif
-    size_t address = search_or_add_entry(program, identifier, VAR);
-    if (address == -1) {
-        printf("Unknown error in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    const word_t address = search_or_add_entry(program, identifier, VAR);
+    if (address == OBJ_NOT_FOUND) {
+        printf("Unknown error on line %d\n", line_number);
+        return false;
     }
     size_t str_ptr = token - buffer_start + strlen(token);  /* End of variable name */
     /* Check space between variable name and '='. Should be only spaces */
     for (; line[str_ptr] != '='; str_ptr++) {
-        /* End of line before assignment */
-        if (line[str_ptr] == '\0') {
-            printf("Unexpected end of line in line %d\n", line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
-        }
-        /* Non-space symbol */
-        if (line[str_ptr] != ' ') {
-            printf("Wrong format or multiple assignment in line %d\n", line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+        /* End of line or non-blank symbol before '='' */
+        if (line[str_ptr] == '\0' || !isblank(line[str_ptr])) {
+            printf("Unexpected character on line %d\n", line_number);
+            return false;
         }
     }
-    str_ptr++; /* At '=' now */
+    /* At '=' now. Switch to the next char */
+    str_ptr++; 
     /* Copy expression to evaluate */
     strcpy(buffer, &line[str_ptr]);
     strip(buffer, buffer);
-#ifdef DEBUG_PARSE
-    printf("Validating '%s'\n", buffer);
-#endif
-    if (!check_expression(buffer)) {
+
+    if (!check_expression(buffer) || !evaluate_expression(buffer, program)) {
         printf("Invalid expression '%s' on line %d\n", buffer, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
-    }
-    if (!evaluate_expression(buffer, program)) {
-        printf("Invalid expression '%s' in line %d\n", buffer, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        return false;
     }
     const word_t instruction = STORE << OPERAND_BITS | address;
     program->memory[program->instruction_ptr++] = instruction;
+    return true;
 }
 
 
-void parse_if(struct Program *program, char line[], const int line_number) {
-    word_t instruction;
+bool parse_if(struct Program *program, char line[], const int line_number) {
+    word_t instruction, address;
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
-    size_t address;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing IF instruction");
-#endif
     strcpy(buffer, line);
     const char *buffer_start = buffer;
     strtok(buffer, " ");  /* Skip line number */
@@ -532,54 +357,35 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     /* Copy from start of left expression */
     strcpy(buffer, &line[token - buffer_start + strlen(token)]);
     strip(buffer, buffer);
-#ifdef DEBUG_PARSE
-    printf("Parsing condition: %s\n", buffer);
-#endif
+
     char *condition_end = strstr(buffer, "goto");
     if (condition_end == NULL) {
-        printf("Missing GOTO in IF statement in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing GOTO in IF statement on line %d\n", line_number);
+        return false;
     }
     char expr[BUFFER_SIZE];
     strncpy(expr, buffer, condition_end - buffer);
     expr[condition_end - buffer] = '\0';
     condition_end += 4;  /* Skip GOTO keyword */
     token = strtok(condition_end, " ");
-    if (token == NULL) {
-        printf("Missing line number after IF..GOTO keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (token == NULL || !check_integer(token) || (identifier.value = atoi(token)) < 0) {
+        printf("Missing or bad line number after IF..GOTO keyword on line %d\n", line_number);
+        return false;
     }
-    if (!check_integer(token)) {
-        printf("Bad line number in line %d\n", line_number);
-        printf("%s\n", line);
-    }
-    identifier.value = atoi(token);
-    if (identifier.value < 0) {
-        printf(
-            "Line number %d should be non-negative in line %d\n",
-            identifier.value, line_number
-        );
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
-    }
+
     bool add_missing = false;
-    if ((address = search_entry(program, identifier, LINE)) == -1) {
+    if ((address = search_entry(program, identifier, LINE)) == OBJ_NOT_FOUND) {
         add_missing = true;
         address = 0;
     }
-#ifdef DEBUG_PARSE
-    printf("Condition: '%s', goto row: '%d'\n", expr, identifier.value);
-#endif
+
     token = strtok(NULL, " ");
     if (token != NULL) {
         printf(
-            "Error: multiple line numbers after IF..GOTO keyword in line %d\n",
+            "Multiple line numbers after IF..GOTO keyword on line %d\n",
             line_number
         );
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     char left_expression[BUFFER_SIZE];
@@ -601,17 +407,18 @@ void parse_if(struct Program *program, char line[], const int line_number) {
     } else if ((comparison_position = strstr(expr, "!=")) != NULL) {
         comparison = NE;
     } else {
-        printf("Can't find comparison in expression '%s' in line %d\n", expr, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Can't find comparison in expression '%s' on line %d\n", expr, line_number);
+        return false;
     }
 
     strncpy(left_expression, expr, comparison_position - expr);
     left_expression[comparison_position - expr] = '\0';
+    strip(left_expression, left_expression);
     strcpy(
         right_expression,
-        comparison_position + ((comparison == LT || comparison == GT)? 1: 2)
+        comparison_position + ((comparison == LT || comparison == GT)? 1 : 2)
     );
+    strip(right_expression, right_expression);
 
     switch (comparison) {
         case LE:
@@ -619,37 +426,29 @@ void parse_if(struct Program *program, char line[], const int line_number) {
         case EQ:
         case NE:
             sprintf(
-                transformed_expression, "(%s) - (%s)", left_expression, right_expression
+                transformed_expression, "(%s)-(%s)", left_expression, right_expression
             );
             break;
         case GE:
         case GT:
             sprintf(
-                transformed_expression, "(%s) - (%s)", right_expression, left_expression
+                transformed_expression, "(%s)-(%s)", right_expression, left_expression
             );
             break;
         default:
             printf(
-                "Unknown comparison type in expression '%s' in line %d\n",
+                "Unknown comparison type in expression '%s' on line %d\n",
                 expr, line_number
             );
-            exit(EXIT_FAILURE);
-            break;
+            return false;
     }
 
-#ifdef DEBUG_PARSE
-    printf("Expression to evaluate: '%s'\n", transformed_expression);
-#endif
-    if (!check_expression(transformed_expression)) {
+    if (
+        !check_expression(transformed_expression) 
+        || !evaluate_expression(transformed_expression, program)
+    ) {
         printf("Invalid expression '%s' on line %d\n", buffer, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
-    }
-    
-    if (!evaluate_expression(transformed_expression, program)) {
-        printf("Invalid expression '%s' in line %d\n", buffer, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     switch (comparison) {
@@ -674,59 +473,66 @@ void parse_if(struct Program *program, char line[], const int line_number) {
             program->memory[program->instruction_ptr++] = instruction;
             break;
         case NE:
+            /* If equal, skip next instruction */
             size_t fakeaddr = program->instruction_ptr + 2;
             instruction = BRANCHZERO << OPERAND_BITS | fakeaddr;
             program->memory[program->instruction_ptr++] = instruction;
+            /* Otherwise (not equal) go to specified line */
             if (add_missing) remember_missing_reference(program, identifier.value);
             instruction = BRANCH << OPERAND_BITS | address ;
             program->memory[program->instruction_ptr++] = instruction;
             break;
         default:
             printf(
-                "Unknown comparison type in expression '%s' in line %d\n",
+                "Unknown comparison type in expression '%s' on line %d\n",
                 expr, line_number
             );
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
-            break;
+            return false;
     }
+    return true;
 }
 
 
-void parse_for(struct Program *program, char line[], const int line_number) {
+bool parse_for(struct Program *program, char line[], const int line_number) {
     word_t instruction;
     char buffer[BUFFER_SIZE];
     union Identifier identifier;
-    size_t var_address, from_address, to_address, step_address;
-    word_t start_value, end_value, step;
+    word_t var_address, from_address, to_address, step_address;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing FOR instruction");
-#endif
-// FOR i = 5 to 10 step 2
-// NEXT
     strcpy(buffer, line);
+    const char *buffer_start = buffer;
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ");  /* Identifier */
     if (token == NULL || !check_identifier(token)) {
-        printf("Missing or bad identifier '%s' in line %d\n", token, line_number);
+        printf("Missing or bad identifier '%s' on line %d\n", token, line_number);
         printf("%s\n", line);
         exit(EXIT_FAILURE);
     }
     strncpy(identifier.name, token, IDENTIFIER_SIZE - 1);
-#ifdef DEBUG_PARSE
-    printf("Adding variable %s\n", identifier.name);
-#endif
     var_address = search_or_add_entry(program, identifier, VAR);
-    token = strtok(NULL, " ="); /* Not strict. Better to parse char by char */
+
+    size_t str_ptr = token - buffer_start + strlen(token);  /* End of variable name */
+    /* Check space between variable name and '='. Should be only spaces */
+    for (; line[str_ptr] != '='; str_ptr++) {
+        /* End of line before assignment */
+        if (line[str_ptr] == '\0' || !isblank(line[str_ptr])) {
+            printf("Unexpected character on line %d\n", line_number);
+            return false;
+        }
+    }
+    /* At '=' now */
+    str_ptr++;
+    strcpy(buffer, &line[str_ptr]);
+    strip(buffer, buffer);
+
+    token = strtok(buffer, " ");
     /* Start value */
     if (token == NULL) {
-        printf("Wrong or missing start value in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing start value on line %d\n", line_number);
+        return false;
     }
-    from_address = -1;
+    from_address = OBJ_NOT_FOUND;
     if (check_integer(token)) {
         identifier.value = atoi(token);
         from_address = search_or_add_entry(program, identifier, CONST);
@@ -734,26 +540,24 @@ void parse_for(struct Program *program, char line[], const int line_number) {
         strcpy(identifier.name, token);
         from_address = search_entry(program, identifier, VAR);
     } 
-    if (from_address == -1) {
-        printf("Bad identifier '%s' in line %d\n", token, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (from_address == OBJ_NOT_FOUND) {
+        printf("Bad identifier '%s' on line %d\n", token, line_number);
+        return false;
     }
     /* to */
     token = strtok(NULL, " ");
     if (token == NULL || strcmp("to", token) != 0) {
-        printf("Missing TO after FOR in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Missing TO after FOR on line %d\n", line_number);
+        return false;
     }
     /* End value */
     token = strtok(NULL, " ");
     if (token == NULL) {
-        printf("Wrong or missing end value in line %d\n", line_number);
+        printf("Missing end value on line %d\n", line_number);
         printf("%s\n", line);
         exit(EXIT_FAILURE);
     }
-    to_address = -1;
+    to_address = OBJ_NOT_FOUND;
     if (check_integer(token)) {
         identifier.value = atoi(token);
         to_address = search_or_add_entry(program, identifier, CONST);
@@ -761,29 +565,25 @@ void parse_for(struct Program *program, char line[], const int line_number) {
         strcpy(identifier.name, token);
         to_address = search_entry(program, identifier, VAR);
     } 
-    if (to_address == -1) {
-        printf("Bad identifier '%s' in line %d\n", token, line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+    if (to_address == OBJ_NOT_FOUND) {
+        printf("Bad identifier '%s' on line %d\n", token, line_number);
+        return false;
     }
     token = strtok(NULL, " ");
     if (token == NULL) {
-        step = 1;
-        identifier.value = step;
+        identifier.value = 1;
         step_address = search_or_add_entry(program, identifier, CONST);
     } else {
         if (strcmp("step", token) != 0) {
-            printf("Wrong token '%s' in FOR in line %d\n", token, line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+            printf("Unexpected token '%s' in FOR on line %d\n", token, line_number);
+            return false;
         }
         token = strtok(NULL, " ");
         if (token == NULL) {
-            printf("Wrong or missing step value in line %d\n", line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+            printf("Missing step value on line %d\n", line_number);
+            return false;
         }
-        step_address = -1;
+        step_address = OBJ_NOT_FOUND;
         if (check_integer(token)) {
             identifier.value = atoi(token);
             step_address = search_or_add_entry(program, identifier, CONST);
@@ -791,10 +591,9 @@ void parse_for(struct Program *program, char line[], const int line_number) {
             strcpy(identifier.name, token);
             step_address = search_entry(program, identifier, VAR);
         } 
-        if (step_address == -1) {
-            printf("Bad identifier '%s' in line %d\n", token, line_number);
-            printf("%s\n", line);
-            exit(EXIT_FAILURE);
+        if (step_address == OBJ_NOT_FOUND) {
+            printf("Bad identifier '%s' on line %d\n", token, line_number);
+            return false;
         }
     }
     instruction = LOAD << OPERAND_BITS | from_address;
@@ -802,42 +601,39 @@ void parse_for(struct Program *program, char line[], const int line_number) {
     instruction = STORE << OPERAND_BITS | var_address;
     program->memory[program->instruction_ptr++] = instruction;
 
+    /* Save to stack current instruction pointer. Will return here on NEXT keyword */
     program->for_stack[program->for_ptr++] = (struct ForEntry) {
         .cycle_begin_address=program->instruction_ptr,
         .var_address=var_address,
         .to_address=to_address, 
         .step_address=step_address
     };
+    return true;
 }
 
 
-
-void parse_for_end(struct Program *program, char line[], const int line_number) {
+bool parse_for_end(struct Program *program, char line[], const int line_number) {
     word_t instruction;
     char buffer[BUFFER_SIZE];
-    union Identifier identifier;
-    size_t address;
 
-#ifdef DEBUG_PARSE
-    puts("Parsing NEXT instruction");
-#endif
     strcpy(buffer, line);
     strtok(buffer, " ");  /* Skip line number */
     strtok(NULL, " ");  /* Skip keyword */
     char *token = strtok(NULL, " ");  /* Tokenize remaining string by space of comma */
     if (token != NULL) {
-        printf("Extra symbols after NEXT keyword in line %d\n", line_number);
-        printf("%s\n", line);
-        exit(EXIT_FAILURE);
+        printf("Extra symbols after NEXT keyword on line %d\n", line_number);
+        return false;
     }
 
     const struct ForEntry entry = program->for_stack[--program->for_ptr];
+    /* increment and save variable */
     instruction = LOAD << OPERAND_BITS | entry.var_address;
     instruction = program->memory[program->instruction_ptr++] = instruction;
     instruction = ADD << OPERAND_BITS | entry.step_address;
     instruction = program->memory[program->instruction_ptr++] = instruction;
     instruction = STORE << OPERAND_BITS | entry.var_address;
     instruction = program->memory[program->instruction_ptr++] = instruction;
+    /* Compare variable and end value */
     instruction = LOAD << OPERAND_BITS | entry.to_address;
     instruction = program->memory[program->instruction_ptr++] = instruction;
     instruction = SUBTRACT << OPERAND_BITS | entry.var_address;
@@ -846,6 +642,7 @@ void parse_for_end(struct Program *program, char line[], const int line_number) 
     instruction = program->memory[program->instruction_ptr++] = instruction;
     instruction = BRANCHNEG << OPERAND_BITS | entry.cycle_begin_address;
     instruction = program->memory[program->instruction_ptr++] = instruction;
+    return true;
 }
 
 
@@ -853,9 +650,6 @@ bool evaluate_expression(char buffer[], struct Program *program) {
     /* Evaluates expression and places result into accumulator */
     word_t instruction;
     /* Tokenizing */
-#ifdef DEBUG_EXPRESSION
-    puts("Tokenizing expression and converting to postfix notation...");
-#endif
     size_t num_tokens;
     struct ExpressionToken expression_tokens[MAX_TOKENS];
     if (!tokenize_expression(buffer, expression_tokens, &num_tokens)) {        
@@ -863,43 +657,11 @@ bool evaluate_expression(char buffer[], struct Program *program) {
         return false;
     }
 
-#ifdef DEBUG_EXPRESSION
-    puts("Generating code...");
-    puts("First pass. Allocating memory for variables and constants");
-#endif
-    for (size_t token_ptr = 0; token_ptr < num_tokens; token_ptr++) {
-#ifdef DEBUG_EXPRESSION
-        printf(
-            "Token '%s' type '%c'\n", 
-            expression_tokens[token_ptr].token, expression_tokens[token_ptr].token_type
-        );
-#endif
-        if (expression_tokens[token_ptr].token_type == IDENTIFIER) {
-            union Identifier identifier;
-            if (check_integer(expression_tokens[token_ptr].token)) {
-                identifier.value = atoi(expression_tokens[token_ptr].token);
-                search_or_add_entry(program, identifier, CONST);
-            } else if (check_identifier(expression_tokens[token_ptr].token)) {
-                strcpy(identifier.name, expression_tokens[token_ptr].token);
-                search_or_add_entry(program, identifier, VAR);
-            } else {
-                printf("%s is not a valid identifier\n", expression_tokens[token_ptr].token);
-                return false;
-            }
-        }
-    }
-
-#ifdef DEBUG_EXPRESSION
-    puts("Second pass. Generating code");
-#endif
-
-    word_t current_stack_pointer = program->stack_ptr;    
-    size_t address;
+    /* Generating code */
+    size_t current_stack_pointer = program->stack_ptr;    
+    word_t address;
     union Identifier identifier;
     for (size_t token_ptr = 0; token_ptr < num_tokens; token_ptr++) {
-#ifdef DEBUG_EXPRESSION
-        printf("Token %s\n", expression_tokens[token_ptr].token);
-#endif
         if (expression_tokens[token_ptr].token_type == IDENTIFIER) {
             /* Load to stack */
             if (check_integer(expression_tokens[token_ptr].token)) {
@@ -912,25 +674,22 @@ bool evaluate_expression(char buffer[], struct Program *program) {
                 printf("%s is not a valid identifier\n", expression_tokens[token_ptr].token);
                 return false;
             }
+            if (address == OBJ_NOT_FOUND) {
+                printf("Identifier '%s' was not found\n", expression_tokens[token_ptr].token);
+            }
+            /* From memory */
             instruction = LOAD << OPERAND_BITS | address;
-#ifdef DEBUG_EXPRESSION
-            printf("From memory OPCODE %X", (word_t) instruction);
-#endif
             program->memory[program->instruction_ptr++] = instruction;
+            /* To stack */
             address = program->stack_ptr++;
             remember_stack_offset(program, program->instruction_ptr, address);
             instruction = STORE << OPERAND_BITS;
-#ifdef DEBUG_EXPRESSION
-            printf(" to stack OPCODE %X\n", (word_t) instruction);
-#endif
             program->memory[program->instruction_ptr++] = instruction;
         } else if (expression_tokens[token_ptr].token_type == OPERATION) {
+            /* From stack to accumulator */
             address = --(program->stack_ptr);
             remember_stack_offset(program, program->instruction_ptr, address);
             instruction = LOAD << OPERAND_BITS;
-#ifdef DEBUG_EXPRESSION
-            printf("From stack OPCODE %X to accumulator. ", (word_t) instruction);
-#endif
             program->memory[program->instruction_ptr++] = instruction;
             switch (expression_tokens[token_ptr].token[0]) {
                 case '+':
@@ -955,19 +714,16 @@ bool evaluate_expression(char buffer[], struct Program *program) {
                     printf("Unknown operation '%c'\n", expression_tokens[token_ptr].token[0]);
                     return false;
             }
+            /* Second operand */
             address = --(program->stack_ptr);
             remember_stack_offset(program, program->instruction_ptr, address);
             instruction = instruction << OPERAND_BITS;
-#ifdef DEBUG_EXPRESSION
-            printf(" Arithmetic operation OPCODE %X.", (word_t) instruction);
-#endif
+
+            /* Place result from accumulator to stack */
             program->memory[program->instruction_ptr++] = instruction;
             address = program->stack_ptr++;
             remember_stack_offset(program, program->instruction_ptr, address);
             instruction = STORE << OPERAND_BITS;
-#ifdef DEBUG_EXPRESSION
-            printf(" To stack %X\n", (word_t) instruction);
-#endif
             program->memory[program->instruction_ptr++] = instruction;
         } else {
             printf("Wrong token '%s'\n", expression_tokens[token_ptr].token);
@@ -980,9 +736,6 @@ bool evaluate_expression(char buffer[], struct Program *program) {
     remember_stack_offset(program, program->instruction_ptr, address);
     instruction = LOAD << OPERAND_BITS;
     program->memory[program->instruction_ptr++] = instruction;
-#ifdef DEBUG_EXPRESSION
-    printf("Placing result in accumulator OPCODE %X\n", instruction);
-#endif
     if (program->stack_ptr != current_stack_pointer) {
         puts("Stack is in dirty state");
         return false;

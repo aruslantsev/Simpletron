@@ -16,7 +16,7 @@ void write_data(void) {
     /* binary file starts with header */
     fwrite(&header, sizeof(word_t), 1, binfile);
 
-    for (int i = 0; i < sizeof(instructions) / sizeof(word_t); i++) {
+    for (size_t i = 0; i < sizeof(instructions) / sizeof(word_t); i++) {
         instruction = (word_t) (instructions[i] << OPERAND_BITS | operands[i]);
         fwrite(&instruction, sizeof(word_t), 1, binfile);
         sprintf(characrter_instruction, "%*X\n", WORD_BITS / 4, (word_t) instruction);

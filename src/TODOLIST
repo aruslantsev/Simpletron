@@ -1,3 +1,4 @@
+ADD README and write documentation
 ADD support for arrays of integer
 ADD subroutines GOSUB...RETURN
 ADD float support

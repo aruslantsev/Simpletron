@@ -5,15 +5,13 @@
 #include <stdbool.h>
 #include "evaluate.h"
 
-// #define DEBUG_EVAL
-
 
 bool is_arithmetic_operation(const char c) {
     return c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^';
 }
 
 
-bool is_parentheses(const char c) {
+bool is_parenthesis(const char c) {
     return c == '(' || c == ')';
 }
 
@@ -37,38 +35,36 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
 
     struct ExpressionToken infix[MAX_TOKENS];
     size_t num_infix_tokens = 0;
-
-#ifdef DEBUG_EVAL
-    printf("Tokenizing expression '%s'\n", expression);
-#endif
-
     char current_identifier[TOKEN_SIZE];
     size_t token_char_idx = 0;
+
     const char *c = expression;
     while (*c != '\0') {
-        /* Operation, parentheses, blank, end of line are token separators */
+        /* Operation, parenthesis, blank, end of line are token separators */
         if (
-            is_parentheses(*c)
+            is_parenthesis(*c)
             || is_arithmetic_operation(*c)
             || isblank(*c)
             || *c == '\n'
         ) {
-
             /* Unary sign */
             if (
                 (
                     token_char_idx > 0
                     && (
+                        /* First token is unary sign, bad sequences will be detected later*/
                         (
                             num_infix_tokens == 1 
                             && infix[num_infix_tokens - 1].token_type == OPERATION
                         ) 
                         || (
+                            /* Operation, unary sign, identifier or 
+                             * opening parenthesis, unary sign, identifier */
                             num_infix_tokens > 2
                             && (
                                 infix[num_infix_tokens - 2].token_type == OPERATION 
                                 || (
-                                    infix[num_infix_tokens - 2].token_type == PARENTHESES 
+                                    infix[num_infix_tokens - 2].token_type == PARENTHESIS 
                                     && infix[num_infix_tokens - 2].token[0] == '('
                                 )
                             )
@@ -80,21 +76,18 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                         )
                     )
                 )
+                /* Opening parenthesis can be the second token, while the first one is unary sign */
                 || (
                     *c == '(' 
                     && num_infix_tokens == 1 
                     && infix[num_infix_tokens - 1].token_type == OPERATION
                 )
             ) {
+                /* Change operation to identifier (+1 or -1) and add after it extra multiplication 
+                 * So, e.g. -7 converts to (-1) * 7, -x converts to (-1 * x) */
                 infix[num_infix_tokens - 1].token[1] = '1';
                 infix[num_infix_tokens - 1].token[2] = '\0';
                 infix[num_infix_tokens - 1].token_type = IDENTIFIER;
-#ifdef DEBUG_EVAL
-                printf(
-                    "Unary operation detected. Converting previous token to '%s'\n", 
-                    infix[num_infix_tokens - 1].token
-                );
-#endif
                 num_infix_tokens++;
                 infix[num_infix_tokens - 1] = (struct ExpressionToken) {
                     .token = "*", .token_type=OPERATION
@@ -107,31 +100,25 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                 current_identifier[token_char_idx] = '\0';
                 strcpy(infix[num_infix_tokens].token, current_identifier);
                 infix[num_infix_tokens].token_type = IDENTIFIER;
-#ifdef DEBUG_EVAL
-                printf("Infix notation: adding token '%s'\n", infix[num_infix_tokens].token);
-#endif
                 num_infix_tokens++;
                 token_char_idx = 0;
             } 
-            if (is_parentheses(*c) || is_arithmetic_operation(*c)) {
+            if (is_parenthesis(*c) || is_arithmetic_operation(*c)) {
                 /* Save parentheses and operations: read single symbol to token */
                 infix[num_infix_tokens].token[0] = *c;
                 infix[num_infix_tokens].token[1] = '\0';
                 if (is_arithmetic_operation(*c)) {
                     infix[num_infix_tokens].token_type = OPERATION;
                 } else {
-                    infix[num_infix_tokens].token_type = PARENTHESES;
+                    infix[num_infix_tokens].token_type = PARENTHESIS;
                 }
-#ifdef DEBUG_EVAL
-                printf("Infix notation: adding token '%s'\n", infix[num_infix_tokens].token);
-#endif
                 num_infix_tokens++;
             }
             c++;
         } else {
             while (
                 !(
-                    is_parentheses(*c)
+                    is_parenthesis(*c)
                     || is_arithmetic_operation(*c)
                     || isblank(*c)
                     || *c == '\n'
@@ -146,28 +133,23 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
     }
 
     /* Validation */
-#ifdef DEBUG_EVAL
-    puts("Tokenized");
-    for (int ptr = 0; ptr < num_infix_tokens; ptr++) {
-        printf("%s ", infix[ptr].token);
+    if (infix[0].token_type == OPERATION) {
+        puts("Error: expression starts with operation");
+        return false;
     }
-    puts("");
-    puts("Validating expression");
-#endif
-
     int parentheses_count = 0;
     for (size_t ptr = 0; ptr < num_infix_tokens; ptr++) {
-        if (infix[ptr].token_type == PARENTHESES) {
+        if (infix[ptr].token_type == PARENTHESIS) {
             if (infix[ptr].token[0] == '(') {
                 parentheses_count++;
             } else if (infix[ptr].token[0] == ')') {
                 parentheses_count--;
                 if (parentheses_count < 0) {
-                    puts("Error: Found closing parentheses without corresponding opening one.");
+                    puts("Error: Found closing parenthesis without corresponding opening one.");
                     return false;
                 }
             } else {
-                printf("'%s' is not parentheses", infix[ptr].token);
+                printf("'%s' is not parenthesis\n", infix[ptr].token);
                 return false;
             }
                 
@@ -190,8 +172,8 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                 return false;
             }
             if (
-                infix[ptr - 1].token_type == PARENTHESES 
-                && infix[ptr].token_type == PARENTHESES 
+                infix[ptr - 1].token_type == PARENTHESIS 
+                && infix[ptr].token_type == PARENTHESIS 
                 && infix[ptr - 1].token[0] != infix[ptr - 1].token[0]
             ) {
                 printf(
@@ -203,21 +185,12 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
         }
     }
 
-#ifdef DEBUG_EVAL
-    puts("Converting to postfix notation");
-#endif
-
+    /* To postfix */
     size_t postfix_tokens = 0;
     struct ExpressionToken stack[MAX_TOKENS];
     size_t stack_ptr = 0;
     for(size_t infix_ptr = 0; infix_ptr < num_infix_tokens; infix_ptr++) {
-#ifdef DEBUG_EVAL
-        printf("Token '%s', type '%c'\n",infix[infix_ptr].token, infix[infix_ptr].token_type);
-#endif
         if (infix[infix_ptr].token_type == IDENTIFIER) {
-#ifdef DEBUG_EVAL
-            puts("To postfix");
-#endif
             tokens[postfix_tokens++] = infix[infix_ptr];
         } else if (infix[infix_ptr].token_type == OPERATION) {
             while (
@@ -227,66 +200,25 @@ bool tokenize_expression(char expression[], struct ExpressionToken tokens[], siz
                     infix[infix_ptr].token[0], stack[stack_ptr - 1].token[0]
                 ) <= 0
             ) {
-#ifdef DEBUG_EVAL
-                printf(
-                    "Moving from stack to output queue token '%s' type '%c'\n", 
-                    stack[stack_ptr - 1].token, stack[stack_ptr - 1].token_type
-                );
-#endif
                 tokens[postfix_tokens++] = stack[--stack_ptr];
             }
-#ifdef DEBUG_EVAL
-            printf(
-                "Placing token '%s', type '%c' to stack\n",
-                infix[infix_ptr].token, infix[infix_ptr].token_type
-            );
-#endif
             stack[stack_ptr++] = infix[infix_ptr];
-        } else if (infix[infix_ptr].token_type == PARENTHESES) {
+        } else if (infix[infix_ptr].token_type == PARENTHESIS) {
             if (infix[infix_ptr].token[0] == '(') {
-#ifdef DEBUG_EVAL
-                puts("To stack (opening parentheses).");
-#endif
                 stack[stack_ptr++] = infix[infix_ptr];
             } else {
-                while (stack_ptr > 0 && stack[stack_ptr - 1].token_type != PARENTHESES) {
-#ifdef DEBUG_EVAL
-                    printf(
-                        "Moving from stack to output queue token '%s' type '%c'\n", 
-                        stack[stack_ptr - 1].token, stack[stack_ptr - 1].token_type
-                    );
-#endif
+                while (stack_ptr > 0 && stack[stack_ptr - 1].token_type != PARENTHESIS) {
                     tokens[postfix_tokens++] = stack[--stack_ptr];
                 }
-#ifdef DEBUG_EVAL
-                puts("Pop opening parentheses");
-#endif
+                /* Pop opening parenthesis */
                 stack_ptr--;
             }
         }
     }
 
-#ifdef DEBUG_EVAL
-    if (stack_ptr > 0) {
-        puts("Stack is not empty");
-    }
-#endif
-    while (stack_ptr > 0 && stack[stack_ptr - 1].token_type != PARENTHESES) {
-#ifdef DEBUG_EVAL
-        printf(
-            "Moving from stack to output queue token '%s' type '%c'\n", 
-            stack[stack_ptr - 1].token, stack[stack_ptr - 1].token_type
-        );
-#endif
+    while (stack_ptr > 0 && stack[stack_ptr - 1].token_type != PARENTHESIS) {
         tokens[postfix_tokens++] = stack[--stack_ptr];
     }
-#ifdef DEBUG_EVAL
-    puts("Resulting postfix notation");
-    for (int ptr = 0; ptr < postfix_tokens; ptr++) {
-        printf("%s ", tokens[ptr].token);
-    }
-    puts("");
-#endif
     *num_tokens = postfix_tokens;
     return true;
 }

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "simpletron.h"
-// TODO: strings processing: optimize, use one byte to save one symbol
 
 
 void simpletron_greet(void) {
