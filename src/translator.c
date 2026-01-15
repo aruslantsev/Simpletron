@@ -23,11 +23,11 @@ void init_program(struct Program *program) {
 
 
 /* Searches object's memory address in lookup list */
-word_t search_entry(
+word_t search_entry (
     struct Program *program,
     const union Identifier identifier,
-    const enum EntryType type)
-{
+    const enum EntryType type
+) {
     for (
         size_t lookup_list_ptr = 0; lookup_list_ptr < program->lookup_list_size; lookup_list_ptr++
     ) {
@@ -56,7 +56,8 @@ word_t search_entry(
 word_t add_entry(
     struct Program *program,
     const union Identifier identifier,
-    const enum EntryType type) {
+    const enum EntryType type
+) {
     program->lookup_list[program->lookup_list_size].identifier = identifier;
     program->lookup_list[program->lookup_list_size].type = type;
 
