@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS:=${CFLAGS} -std=c99 -Wall -Wextra
+CFLAGS:=${CFLAGS} -std=c99 -Wall -Wextra -g -fsanitize=address
 LDFLAGS:=${LDFLAGS} -lm
 
 .PHONY: all clean
